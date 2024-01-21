@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:file="http://www.mulesoft.org/schema/mule/file"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd">
+	<http:request-config name="File_API_Request_configuration" doc:name="HTTP Request configuration" doc:id="b44e637f-9698-4471-abe6-8cc67f458ead" >
+		<http:request-connection host="file-rest-api-mule4.us-e1.cloudhub.io" port="80" />
+	</http:request-config>
+	<configuration-properties doc:name="Configuration properties" doc:id="af185eb5-18ac-4c86-80fc-ed23a464f614" file="mule-properties.yaml" />
+	<flow name="call-file-apiFlow" doc:id="2f803061-3f16-4e27-954f-4aa42bd314b5" >
+		<file:listener doc:name="On New or Updated File" doc:id="f0c1e379-4e2e-4daf-bf8f-3b926ec83566" directory="${file.base}/src/main/resources/in" moveToDirectory="#[p('file.base') ++ &quot;/src/main/resources/out&quot;]">
+			<scheduling-strategy >
+				<fixed-frequency />
+			</scheduling-strategy>
+		</file:listener>
+		<logger level="INFO" doc:name="Logger" doc:id="f8c31de6-f613-4a15-9f40-f7ce365780e2" />
+		<ee:transform doc:name="Transform Message" doc:id="f7e9bfcf-6b8b-4616-846c-d5cd0ad41558" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+import dw::module::Multipart
+import * from dw::core::Binaries
+output multipart/form-data boundary="--------------------------abc123"
+---
+{
+    parts : {
+        file : {
+            headers : {
+                "Content-Disposition" : {
+                    "name": "fileName",
+                    "filename": attributes.fileName
+                    },
+                "Content-Type" : payload.^mediaType
+                },
+            content : payload
+            }
+        }
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="086d048c-57a5-4996-a8a3-64bc8efa2caf" />
+		<http:request method="POST" doc:name="Request" doc:id="5c105db1-9797-403d-af12-f922f6506dc1" config-ref="File_API_Request_configuration" path="/api/file"/>
+	</flow>
+</mule>
